@@ -2,14 +2,16 @@
 
 package ru.gildor.gradle.firebase.testlab
 
-import com.android.build.gradle.TestedExtension
+import com.android.build.gradle.AppExtension
+import com.android.build.gradle.FeatureExtension
+import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.api.TestVariant
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.logging.Logger
-import org.gradle.script.lang.kotlin.closureOf
+import org.gradle.kotlin.dsl.closureOf
 import ru.gildor.gradle.firebase.testlab.TestType.instrumentation
 import ru.gildor.gradle.firebase.testlab.TestType.robo
 import ru.gildor.gradle.firebase.testlab.internal.gcloud.GcloudCliResultDownloader
@@ -43,7 +45,7 @@ class FirebaseTestLabPlugin : Plugin<Project> {
     }
 
     private val config by lazy {
-        project.extensions.findByType(FirebaseTestLabPluginExtension::class.java).apply {
+        project.extensions.findByType(FirebaseTestLabPluginExtension::class.java)?.apply {
             //If we have no configured matrices, just skip verification
             if (matrices.isEmpty()) return@apply
             if (!File(gcloudPath, "bin/gcloud").canExecute()) {
@@ -52,7 +54,7 @@ class FirebaseTestLabPlugin : Plugin<Project> {
             if (!File(gcloudPath, "bin/gsutil").canExecute()) {
                 throw GradleException("gsutil CLI not found on $gcloudPath/bin. Please specify correct path")
             }
-            if (bucketName.isNullOrBlank()) {
+            if (bucketName.isBlank()) {
                 throw GradleException("Bucket name for Test Lab results not specified")
             }
         } ?: FirebaseTestLabPluginExtension(project)
@@ -86,15 +88,18 @@ class FirebaseTestLabPlugin : Plugin<Project> {
         //Enable Android specific tasks only if project has Android gradle plugin
         if (ANDROID_PLUGIN_IDS.all {project.plugins.findPlugin(it) == null}) return
 
-        project.extensions.findByType(TestedExtension::class.java).apply {
-            //Create task only for testable variants
-            testVariants.forEach { variant ->
-                val apks = VariantApkSource(variant)
-                //Create task for each matrix
-                matrices.forEach { matrix ->
-                    createTask(instrumentation, matrix, variant, apks)
-                    createTask(robo, matrix, variant, apks)
-                }
+        val extension = project.extensions.findByType(LibraryExtension::class.java)
+            ?: project.extensions.findByType(FeatureExtension::class.java)
+            ?: project.extensions.findByType(AppExtension::class.java)
+            ?: return
+
+        //Create task only for testable variants
+        extension.testVariants.forEach { variant ->
+            val apks = VariantApkSource(variant)
+            //Create task for each matrix
+            matrices.forEach { matrix ->
+                createTask(instrumentation, matrix, variant, apks)
+                createTask(robo, matrix, variant, apks)
             }
         }
     }

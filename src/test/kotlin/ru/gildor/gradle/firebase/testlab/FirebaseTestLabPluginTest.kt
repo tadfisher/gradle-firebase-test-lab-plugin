@@ -38,7 +38,7 @@ class FirebaseTestLabPluginTest : GradleBaseTest() {
                 $defaultMatrices
             }
         """).withArguments(":tasks", "--stacktrace").build().apply {
-            assertEquals(TaskOutcome.SUCCESS, task(":tasks").outcome)
+            assertEquals(TaskOutcome.SUCCESS, task(":tasks")?.outcome)
             assertStandaloneTasksExists(output)
             assertAndroidTasksExists(output)
         }
@@ -102,7 +102,9 @@ class FirebaseTestLabPluginTest : GradleBaseTest() {
     }
 
     private fun mockAndroid(): String {
-        createFile("local.properties", "sdk.dir=/Library/android-sdk")
+        if (System.getenv("ANDROID_HOME") == null) {
+            createFile("local.properties", "sdk.dir=/Library/android-sdk")
+        }
 
         createFolder("src", "main")
 
@@ -114,9 +116,10 @@ class FirebaseTestLabPluginTest : GradleBaseTest() {
                 buildscript {
                   repositories {
                     jcenter()
+                    google()
                   }
                   dependencies {
-                    classpath 'com.android.tools.build:gradle:2.3.0'
+                    classpath 'com.android.tools.build:gradle:3.0.0'
                   }
                 }
 
@@ -126,8 +129,8 @@ class FirebaseTestLabPluginTest : GradleBaseTest() {
                 apply plugin: 'ru.gildor.gradle.firebase.testlab'
 
                 android {
-                    compileSdkVersion 25
-                    buildToolsVersion "25.0.1"
+                    compileSdkVersion 27
+                    buildToolsVersion "27.0.0"
                 }
         """
     }

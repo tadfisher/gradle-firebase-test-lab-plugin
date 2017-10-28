@@ -1,24 +1,23 @@
 
-import org.gradle.script.lang.kotlin.*
+plugins {
+    `maven-publish`
+    `java-gradle-plugin`
+    `kotlin-dsl`
+    kotlin("jvm")
+    id("com.gradle.plugin-publish") version "0.9.9"
+}
 
 group = "ru.gildor.gradle.firebase.testlab"
 version = "0.2.0"
 description = "Gradle plugin to run Android instrumentation and robo test on Firebase Test Lab"
 
-plugins {
-    `maven-publish`
-    `java-gradle-plugin`
-    id("org.jetbrains.kotlin.jvm") version "1.1.1"
-    id("com.gradle.plugin-publish") version "0.9.7"
-}
-
-
 repositories {
     jcenter()
+    google()
 }
 
 gradlePlugin {
-    plugins.invoke {
+    (plugins) {
         "firebaseTestLab" {
             id = project.group as String
             implementationClass = "ru.gildor.gradle.firebase.testlab.FirebaseTestLabPlugin"
@@ -32,7 +31,7 @@ pluginBundle {
     description = project.description
     tags = listOf("firebase", "test-lab", "android", "espresso", "robo")
 
-    plugins.invoke {
+    (plugins) {
         "firebaseTestLab" {
             id = project.group as String
             displayName = "Gradle Firebase Test Lab plugin"
@@ -41,9 +40,15 @@ pluginBundle {
 }
 
 dependencies {
-    compile(kotlinModule("stdlib"))
-    compile(gradleScriptKotlinApi())
-    compileOnly("com.android.tools.build:gradle:2.3.0")
-    testRuntime("com.android.tools.build:gradle:2.3.0")
-    testCompile("junit:junit:4.12")
+    implementation(kotlin("stdlib"))
+    implementation("com.android.tools.build:gradle:3.0.0")
+
+    testRuntimeOnly("com.android.tools.build:gradle:3.0.0")
+    testImplementation("junit:junit:4.12")
+}
+
+task("wrapper", type = Wrapper::class) {
+    group = "build setup"
+    gradleVersion = "4.2.1"
+    distributionType = Wrapper.DistributionType.ALL
 }
