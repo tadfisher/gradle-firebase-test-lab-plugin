@@ -42,6 +42,7 @@ pluginBundle {
 dependencies {
     implementation(kotlin("stdlib"))
     implementation("com.android.tools.build:gradle:3.0.0")
+    implementation(project(":firebase-testing"))
 
     testRuntimeOnly("com.android.tools.build:gradle:3.0.0")
     testImplementation("junit:junit:4.12")

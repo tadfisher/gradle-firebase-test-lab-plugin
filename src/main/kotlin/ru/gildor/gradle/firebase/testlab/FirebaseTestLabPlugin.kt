@@ -69,7 +69,6 @@ class FirebaseTestLabPlugin : Plugin<Project> {
         }
         createAndroidTasks(matrices)
         createStandaloneTasks(matrices)
-
     }
 
     private fun createStandaloneTasks(matrices: List<Matrix>) {
