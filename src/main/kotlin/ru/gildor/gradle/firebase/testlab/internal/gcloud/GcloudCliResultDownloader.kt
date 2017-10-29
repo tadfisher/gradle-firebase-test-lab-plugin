@@ -2,13 +2,10 @@ package ru.gildor.gradle.firebase.testlab.internal.gcloud
 
 import org.gradle.api.GradleException
 import org.gradle.api.logging.Logger
+import ru.gildor.gradle.firebase.testlab.internal.TestLabResultDownloader
 import ru.gildor.gradle.firebase.testlab.internal.utils.command
 import ru.gildor.gradle.firebase.testlab.internal.utils.startCommand
 import java.io.File
-
-internal interface TestLabResultDownloader {
-    fun downloadResult(result: TestResult)
-}
 
 internal class GcloudCliResultDownloader(
         private val artifacts: List<String>,

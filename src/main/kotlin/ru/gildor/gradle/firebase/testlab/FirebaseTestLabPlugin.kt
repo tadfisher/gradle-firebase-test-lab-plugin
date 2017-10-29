@@ -6,6 +6,7 @@ import com.android.build.gradle.AppExtension
 import com.android.build.gradle.FeatureExtension
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.api.TestVariant
+import kotlinx.coroutines.experimental.runBlocking
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -46,17 +47,8 @@ class FirebaseTestLabPlugin : Plugin<Project> {
 
     private val config by lazy {
         project.extensions.findByType(FirebaseTestLabPluginExtension::class.java)?.apply {
-            //If we have no configured matrices, just skip verification
             if (matrices.isEmpty()) return@apply
-            if (!File(gcloudPath, "bin/gcloud").canExecute()) {
-                throw GradleException("gcloud CLI not found on $gcloudPath/bin. Please specify correct path")
-            }
-            if (!File(gcloudPath, "bin/gsutil").canExecute()) {
-                throw GradleException("gsutil CLI not found on $gcloudPath/bin. Please specify correct path")
-            }
-            if (bucketName.isBlank()) {
-                throw GradleException("Bucket name for Test Lab results not specified")
-            }
+            runner.validate()
         } ?: FirebaseTestLabPluginExtension(project)
     }
 
@@ -103,7 +95,6 @@ class FirebaseTestLabPlugin : Plugin<Project> {
         }
     }
 
-
     private fun createTask(
             type: TestType,
             matrix: Matrix,
@@ -123,6 +114,7 @@ class FirebaseTestLabPlugin : Plugin<Project> {
                         description += "\nTo run test for your matrix without build project" +
                                 " you must specify paths to apk and test apk using parameters -Papk and -PtestApk"
                     }
+
                     //Add dependencies on assemble tasks of application and tests
                     //But only for "variant" builds,
                     if (variant != null) {
@@ -136,10 +128,17 @@ class FirebaseTestLabPlugin : Plugin<Project> {
                             )
                         })
                     }
+
                     doLast {
-                        val result = runTestLabTest(type, matrix, apks, project.logger)
+                        val job = config.runner.buildTestLabRunner(type, matrix, apks, project.logger).start()
+                        val result = runBlocking { job.await() }
                         processResult(result, config.ignoreFailures)
-                        downloadArtifacts(result)
+                        logger.lifecycle("Artifact downloading started")
+                        config.runner.buildResultDownloader(
+                                config.artifacts.getArtifactPaths(),
+                                File(project.buildDir, RESULT_PATH),
+                                logger)
+                                .downloadResult(result)
                     }
                 })
     }
@@ -157,32 +156,4 @@ class FirebaseTestLabPlugin : Plugin<Project> {
             }
         }
     }
-
-    private fun downloadArtifacts(result: TestResult) {
-        logger.lifecycle("Artifact downloading started")
-        GcloudCliResultDownloader(
-                config.artifacts.getArtifactPaths(),
-                File(project.buildDir, RESULT_PATH),
-                File(config.gcloudPath),
-                config.bucketName,
-                project.logger
-        ).downloadResult(result)
-    }
-
-    private fun runTestLabTest(
-            testType: TestType,
-            matrix: Matrix,
-            apks: ApkSource,
-            logger: Logger
-    ): TestResult {
-        return GcloudCliRunner(
-                testType,
-                logger,
-                File(config.gcloudPath),
-                config.bucketName,
-                matrix,
-                apks
-        ).start()
-    }
 }
-

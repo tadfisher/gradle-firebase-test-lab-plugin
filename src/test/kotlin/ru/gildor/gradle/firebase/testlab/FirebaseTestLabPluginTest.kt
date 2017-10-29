@@ -24,8 +24,10 @@ class FirebaseTestLabPluginTest : GradleBaseTest() {
             ${mockAndroid()}
 
             firebaseTestLab {
-                gcloudPath = "${mockCli()}"
-                bucketName = "bucket_name"
+                runner = cli({
+                    gcloudPath = "${mockCli()}"
+                    bucketName = "bucket_name"
+                })
                 ignoreFailures = true
                 enableVariantLessTasks = true
                 copyArtifact {
@@ -50,8 +52,10 @@ class FirebaseTestLabPluginTest : GradleBaseTest() {
             plugins { id "$pluginId" }
 
             firebaseTestLab {
-                gcloudPath = "${mockCli()}"
-                bucketName = "testBucket"
+                runner = cli {
+                    gcloudPath = "${mockCli()}"
+                    bucketName = "testBucket"
+                }
                 enableVariantLessTasks = true
 
                 $defaultMatrices
@@ -69,8 +73,10 @@ class FirebaseTestLabPluginTest : GradleBaseTest() {
             ${mockAndroid()}
 
             firebaseTestLab {
-                gcloudPath = "${mockCli()}"
-                bucketName = "testBucket"
+                runner = cli {
+                    gcloudPath = "${mockCli()}"
+                    bucketName = "testBucket"
+                }
 
                 $defaultMatrices
             }
@@ -90,8 +96,10 @@ class FirebaseTestLabPluginTest : GradleBaseTest() {
             }
 
             firebaseTestLab {
-                gcloudPath = "${mockCli()}"
-                bucketName = "testBucket"
+                runner = cli {
+                    gcloudPath = "${mockCli()}"
+                    bucketName = "testBucket"
+                }
 
                 $defaultMatrices
             }

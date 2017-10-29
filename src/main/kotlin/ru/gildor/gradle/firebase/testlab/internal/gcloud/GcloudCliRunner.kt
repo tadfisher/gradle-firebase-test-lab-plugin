@@ -1,30 +1,32 @@
 package ru.gildor.gradle.firebase.testlab.internal.gcloud
 
+import kotlinx.coroutines.experimental.CancellationException
+import kotlinx.coroutines.experimental.Deferred
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.delay
 import org.gradle.api.logging.Logger
 import ru.gildor.gradle.firebase.testlab.ApkSource
 import ru.gildor.gradle.firebase.testlab.Matrix
 import ru.gildor.gradle.firebase.testlab.TestType
+import ru.gildor.gradle.firebase.testlab.internal.TestLabRunner
 import ru.gildor.gradle.firebase.testlab.internal.utils.asCommand
 import ru.gildor.gradle.firebase.testlab.internal.utils.command
 import ru.gildor.gradle.firebase.testlab.internal.utils.joinArgs
 import java.io.File
-
-internal interface TestLabRunner {
-    fun start(): TestResult
-}
+import java.util.concurrent.TimeUnit
 
 internal class GcloudCliRunner(
         type: TestType,
         val logger: Logger,
         gcloudPath: File?,
         val bucket: String,
-        matrix: Matrix,
+        val matrix: Matrix,
         apks: ApkSource
 ) : TestLabRunner {
 
     //TODO: check --result-history-name attribute
     private val processBuilder = ProcessBuilder("""
-        ${command("gcloud", gcloudPath)}
+        ${command("bin/gcloud", gcloudPath)}
                 beta test android run
                 --format json
                 --results-bucket $bucket
@@ -38,7 +40,7 @@ internal class GcloudCliRunner(
                 ${if (matrix.timeoutSec > 0) "--timeoutSec ${matrix.timeoutSec}s" else ""}
     """.asCommand())
 
-    override fun start(): TestResult {
+    override fun start(): Deferred<TestResult> {
         val process = processBuilder.redirectErrorStream(true).start()
         logger.debug(processBuilder.command().joinToString(" "))
         var resultDir: String? = null
@@ -54,13 +56,24 @@ internal class GcloudCliRunner(
             }
         }
 
-        val code = process.waitFor()
+        return asyncWaitForResult(process, resultDir)
+    }
 
-        return TestResult(
+    fun asyncWaitForResult(process: Process, resultDir: String?) = async {
+        var code = 19
+        try {
+            while (process.isAlive) {
+                delay(1, TimeUnit.SECONDS)
+            }
+            code = process.exitValue()
+        } catch (e: CancellationException) {
+            logger.lifecycle("Cancelling test matrix ${matrix.name}")
+            process.destroy()
+        }
+        TestResult(
                 isSuccessful = code == RESULT_SUCCESSFUL,
                 resultDir = resultDir,
-                message = resultMessages[code] ?: ""
-        )
+                message = resultMessages[code] ?: "")
     }
 }
 
@@ -82,4 +95,3 @@ val resultMessages = mapOf(
         19 to "The test matrix was canceled by the user.",
         20 to "A test infrastructure error occurred."
 )
-
